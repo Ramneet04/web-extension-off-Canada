@@ -1,0 +1,28 @@
+# Virtual environment
+venv/
+
+# Data files (too large for git)
+data/raw_products.json
+data\raw_products_readable.json
+data/off_canada.duckdb
+
+# Qdrant storage
+qdrant_storage/
+
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# VS Code
+.vscode/
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+duckdb
+qdrant-client
+sentence-transformers
+anthropic
+pandas
+python-dotenv
+requests
