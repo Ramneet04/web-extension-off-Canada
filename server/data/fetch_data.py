@@ -5,7 +5,7 @@ import os
 def fetch_canadian_products(pages=5):
     all_products = []
     
-    for page in range(1, pages + 1):
+    for page in range(3, pages + 1):
         print(f"Fetching page {page} of {pages}...")
         
         try:
@@ -17,10 +17,10 @@ def fetch_canadian_products(pages=5):
                     "tag_contains_0": "contains",
                     "tag_0": "canada",
                     "json": 1,
-                    "page_size": 200,
+                    "page_size": 100,
                     "page": page
                 },
-                timeout=30
+                timeout=60
             )
             
             data = response.json()

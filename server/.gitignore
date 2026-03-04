@@ -3,9 +3,11 @@ venv/
 
 # Data files (too large for git)
 data/raw_products.json
-data\raw_products_readable.json
+data/raw_products_readable.json
 data/off_canada.duckdb
-
+data/en.openfoodfacts.org.products.tsv
+data/vectors.json
+data/en.openfoodfacts.org.products.tsv
 # Qdrant storage
 qdrant_storage/
 
