@@ -1,5 +1,5 @@
 from qdrant_client import QdrantClient
-from qdrant_client.models import Filter, FieldCondition, MatchAny, MatchValue, Range
+from qdrant_client.models import Filter, FieldCondition, MatchAny, MatchValue, Range, MatchText
 from sentence_transformers import SentenceTransformer
 from api.query_parser import parse_query
 
@@ -51,12 +51,12 @@ def build_filter(filters: dict):
             range=Range(gte=filters["min_fiber_100g"])
         ))
     if filters.get("label"):
-        label = filters["label"]
-        if "," in str(label):
-            label = label.split(",")[0].strip()
+        label_value = filters["label"]
+        if "," in str(label_value):
+            label_value = label_value.split(",")[0].strip()
         conditions.append(FieldCondition(
             key="labels_en",
-            match=MatchValue(value=label)
+            match=MatchText(text=label_value)
         ))
 
     return Filter(must=conditions) if conditions else None

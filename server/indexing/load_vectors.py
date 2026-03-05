@@ -10,14 +10,17 @@ print(f"Loaded {len(all_vectors)} vectors")
 
 qdrant = QdrantClient("localhost", port=6333)
 
-qdrant.recreate_collection(
+# Fix 1: Use new API instead of deprecated recreate_collection
+if qdrant.collection_exists("off_products"):
+    qdrant.delete_collection("off_products")
+
+qdrant.create_collection(
     collection_name="off_products",
     vectors_config=VectorParams(size=384, distance=Distance.COSINE)
 )
 
 print("Collection created")
 
-# Upload in batches
 batch_size = 500
 total = len(all_vectors)
 
