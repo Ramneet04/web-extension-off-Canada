@@ -70,12 +70,12 @@ def search_products(query: str, limit: int = 20) -> dict:
     vector = model.encode(parsed["semantic_query"]).tolist()
 
     qdrant_filter = build_filter(parsed.get("filters", {}))
-    results = qdrant.search(
-        collection_name="off_products",
-        query_vector=vector,
-        query_filter=qdrant_filter,
-        limit=limit
-    )
+    results = qdrant.query_points(
+    collection_name="off_products",
+    query=vector,
+    query_filter=qdrant_filter,
+    limit=limit
+    ).points
 
     
     products = []
