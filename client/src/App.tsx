@@ -5,7 +5,14 @@ import ProductPage from './pages/ProductPage'
 export default function App() {
   const [currentProduct, setCurrentProduct] = useState<string | null>(null)
 
-  return currentProduct
-    ? <ProductPage code={currentProduct} onBack={() => setCurrentProduct(null)} />
-    : <SearchPage onProductClick={setCurrentProduct} />
+  return (
+    <>
+      <div style={{ display: currentProduct ? 'none' : 'block' }}>
+        <SearchPage onProductClick={setCurrentProduct} />
+      </div>
+      {currentProduct && (
+        <ProductPage code={currentProduct} onBack={() => setCurrentProduct(null)} onProductClick={setCurrentProduct} />
+      )}
+    </>
+  )
 }

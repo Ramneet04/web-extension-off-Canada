@@ -8,6 +8,9 @@ data/off_canada.duckdb
 data/en.openfoodfacts.org.products.tsv
 data/vectors.json
 data/en.openfoodfacts.org.products.tsv
+data/embeddings.npz
+data/off_v2.duckdb
+data/0000.parquet
 # Qdrant storage
 qdrant_storage/
 
