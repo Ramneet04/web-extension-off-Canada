@@ -349,15 +349,31 @@ export default function ProductPage({
               background: 'white', border: '1.5px solid #e8e4dc',
               borderRadius: 16, padding: '20px 24px', marginBottom: 20
             }}>
-              <div style={{
-                fontSize: 12, fontWeight: 600, color: '#8a8478',
-                marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1
-              }}>
-                Ingredients
-              </div>
-              <p style={{ fontSize: 13, color: '#1a1814', lineHeight: 1.7, margin: 0 }}>
-                {product.ingredients_text}
-              </p>
+                <div style={{
+                  fontSize: 12, fontWeight: 600, color: '#8a8478',
+                  marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1
+                }}>
+                  Ingredients
+                </div>
+                <p style={{ fontSize: 13, color: '#1a1814', lineHeight: 1.7, margin: 0 }}>
+                  {product.ingredients_text}
+                </p>
+                {dietProfile && (
+                  <div style={{
+                    background: '#e8f4ee', border: '1.5px solid #b7dfc8',
+                    borderRadius: 14, padding: '14px 16px', marginBottom: 16
+                  }}>
+                    <div style={{ fontSize: 13, color: '#2d6a4f', fontWeight: 600, marginBottom: 6 }}>
+                      Diet Profile & Usage
+                    </div>
+                    {dietProfile.compare && <div style={{ fontSize: 14, marginBottom: 6 }}>{dietProfile.compare}</div>}
+                    {dietProfile.usage && dietProfile.usage.length > 0 && (
+                      <ul style={{ margin: 0, paddingLeft: 18, color: '#1a1814', fontSize: 13 }}>
+                        {dietProfile.usage.map((u: string, i: number) => <li key={i}>{u}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                )}
             </div>
           )}
 

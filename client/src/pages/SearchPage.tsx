@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import axios from 'axios'
 
 function LoadingImage({ src, alt, style }: { src: string; alt?: string; style?: React.CSSProperties }) {
@@ -99,13 +99,15 @@ function parseTags(tags: string | null): string[] {
   }
 }
 
-export default function SearchPage({ onProductClick }: { onProductClick: (code: string) => void }) {
+
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [country, setCountry] = useState('')
   const [offset, setOffset] = useState(0)
+  const [sessionContext, setSessionContext] = useState<any>({})
+  const sessionId = useRef<string>(`${Math.random().toString(36).slice(2)}`)
   const LIMIT = 20
 
   const doSearch = async (q: string, append = false) => {
@@ -120,6 +122,8 @@ export default function SearchPage({ onProductClick }: { onProductClick: (code: 
         limit: LIMIT,
         offset: currentOffset,
         country: country || undefined
+      }, {
+        headers: { 'x-session-id': sessionId.current }
       })
       if (append) {
         setResults(prev => prev ? {
@@ -130,12 +134,30 @@ export default function SearchPage({ onProductClick }: { onProductClick: (code: 
         setResults(res.data)
       }
       setOffset(currentOffset + LIMIT)
+      // Fetch session context after search
+      const ctxRes = await axios.get('http://localhost:8000/api/session/context', {
+        headers: { 'x-session-id': sessionId.current }
+      })
+      setSessionContext(ctxRes.data)
     } catch (e) {
       console.log(e)
       setError('Search failed. Make sure the backend is running.')
     }
     setLoading(false)
   }
+  const updateSessionContext = async (context: any) => {
+    try {
+      await axios.post('http://localhost:8000/api/session/context', { context }, {
+        headers: { 'x-session-id': sessionId.current }
+      })
+      const ctxRes = await axios.get('http://localhost:8000/api/session/context', {
+        headers: { 'x-session-id': sessionId.current }
+      })
+      setSessionContext(ctxRes.data)
+    } catch {}
+  }
+  // Example: add vegan filter button
+  // <button onClick={() => updateSessionContext({ vegan: true })}>Only Vegan</button>
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 24px', fontFamily: 'DM Sans, sans-serif' }}>
@@ -162,6 +184,20 @@ export default function SearchPage({ onProductClick }: { onProductClick: (code: 
       </div>
 
       <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 10 }}>
+          <button
+            onClick={() => updateSessionContext({ vegan: true })}
+            style={{
+              background: sessionContext?.filters?.vegan ? '#2d6a4f' : 'white',
+              color: sessionContext?.filters?.vegan ? 'white' : '#2d6a4f',
+              border: '1.5px solid #2d6a4f', borderRadius: 10,
+              padding: '6px 16px', fontSize: 13, fontWeight: 600,
+              marginRight: 8, cursor: 'pointer'
+            }}
+          >
+            Only Vegan
+          </button>
+        </div>
         <div style={{
           display: 'flex', gap: 10,
           background: 'white',
