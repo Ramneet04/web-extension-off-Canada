@@ -104,20 +104,10 @@ def get_product_by_code(code: str, con: duckdb.DuckDBPyConnection) -> dict | Non
 
 
 def get_similar_products(code: str, limit: int, con: duckdb.DuckDBPyConnection) -> dict:
-    results = qdrant.scroll(
-        collection_name="off_products",
-        scroll_filter=None,
-        limit=1,
-        with_payload=True,
-        with_vectors=True
-    )
-
-   
     product = get_product_by_code(code, con)
     if not product:
         return {"explanation": "Product not found", "total": 0, "results": []}
 
-    
     name    = product.get("product_name") or ""
     brands  = product.get("brands") or ""
     cats    = product.get("categories_tags") or ""
@@ -130,9 +120,8 @@ def get_similar_products(code: str, limit: int, con: duckdb.DuckDBPyConnection) 
     qdrant_results = qdrant.query_points(
         collection_name="off_products",
         query=vector,
-        limit=limit + 1  
+        limit=limit + 1
     ).points
-
 
     codes = [r.payload["code"] for r in qdrant_results if r.payload["code"] != code][:limit]
 
@@ -212,11 +201,11 @@ def search_products(
     limit: int,
     con: duckdb.DuckDBPyConnection,
     offset: int = 0,
-    country: str = None
+    country: str = None,
+    filters: dict = None
 ) -> dict:
     barcodes = extract_barcodes_from_query(query)
     if barcodes:
-        
         if len(barcodes) > 1:
             return compare_by_codes(barcodes, con)
         else:
@@ -229,11 +218,15 @@ def search_products(
                 }
 
     print(f"Parsing query: {query}")
-    parsed  = parse_query(query)
-    filters = parsed.get("filters", {})
+    parsed = parse_query(query)
+
+    # Merge parsed filters with any session filters passed in
+    parsed_filters = parsed.get("filters", {}) or {}
+    if filters:
+        parsed_filters.update(filters)
 
     if country:
-        filters["country"] = country
+        parsed_filters["country"] = country
 
     print(f"Parsed: {parsed}")
 
@@ -253,7 +246,7 @@ def search_products(
     codes        = list(code_score.keys())
     placeholders = ",".join(["?" for _ in codes])
 
-    where_filter, params = build_duckdb_filter(filters)
+    where_filter, params = build_duckdb_filter(parsed_filters)
 
     df = con.execute(
         f"SELECT {PRODUCT_FIELDS} FROM products WHERE code IN ({placeholders}) {where_filter}",
@@ -308,71 +301,36 @@ def compare_by_codes(codes: list[str], con: duckdb.DuckDBPyConnection) -> dict:
 
 
 def compare_by_names(query: str, con: duckdb.DuckDBPyConnection) -> dict:
-    from groq import Groq
-    import json, os
-    from dotenv import load_dotenv
-    load_dotenv()
-
-    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-    response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {
-                "role": "system",
-                "content": "Extract product/brand names from a comparison query. Return the original/regular version of each product, not diet or zero variants unless explicitly asked. Return ONLY a JSON array of strings. Example: [\"Coca-Cola\", \"Pepsi\", \"Fanta\"]"
-            },
-            {"role": "user", "content": query}
-        ],
-        max_tokens=100
+    # Split on compare keywords to extract individual product names
+    cleaned = re.sub(
+        r'\b(compare|vs|versus|comparer|différence entre|difference between)\b',
+        '|', query, flags=re.IGNORECASE
     )
+    parts = [p.strip() for p in cleaned.split('|') if p.strip()]
 
-    try:
-        raw = response.choices[0].message.content.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        names = json.loads(raw)
-    except Exception:
-        names = []
-
-    if not names:
-        return {"explanation": "Could not extract product names", "total": 0, "results": []}
+    if len(parts) < 2:
+        return {
+            "explanation": "Could not extract product names to compare",
+            "total":       0,
+            "results":     []
+        }
 
     products = []
-    for name in names:
-        result = con.execute(f"""
-            SELECT {PRODUCT_FIELDS}
-            FROM products
-            WHERE product_name ILIKE ?
-               OR product_name_en ILIKE ?
-               OR brands ILIKE ?
-            ORDER BY
-              CASE WHEN product_name ILIKE ? THEN 0 ELSE 1 END,
-              CASE WHEN product_name ILIKE ? OR product_name_en ILIKE ? THEN 0 ELSE 1 END,
-              popularity_key DESC
-            LIMIT 1
-        """, [f"%{name}%", f"%{name}%", f"%{name}%",
-              name, f"%{name}%", f"%{name}%"]).fetchdf()
-
-        if not result.empty:
-            products.append(format_product(result.to_dict("records")[0]))
-        else:
-            
-            vector = model.encode(name).tolist()
-            qdrant_results = qdrant.query_points(
-                collection_name="off_products",
-                query=vector,
-                limit=1
-            ).points
-            if qdrant_results:
-                code = qdrant_results[0].payload["code"]
-                p    = get_product_by_code(code, con)
-                if p:
-                    products.append(p)
+    for name in parts:
+        vector = model.encode(name).tolist()
+        qdrant_results = qdrant.query_points(
+            collection_name="off_products",
+            query=vector,
+            limit=1
+        ).points
+        if qdrant_results:
+            code = qdrant_results[0].payload["code"]
+            p = get_product_by_code(code, con)
+            if p:
+                products.append(p)
 
     return {
-        "explanation": f"Comparing {', '.join(names)}",
+        "explanation": f"Comparing: {' vs '.join(parts)}",
         "total":       len(products),
         "results":     products
     }

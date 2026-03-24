@@ -6,6 +6,9 @@ import duckdb
 import math
 import json
 
+from fastapi import Request
+from typing import Optional
+
 def safe_json(obj):
     if isinstance(obj, dict):
         return {k: safe_json(v) for k, v in obj.items()}
@@ -34,6 +37,15 @@ app.add_middleware(
 
 con = duckdb.connect("data/off_v2.duckdb", read_only=True)
 
+# In-memory session context (per session id)
+session_contexts = {}
+
+def get_session_id(request: Request) -> str:
+    sid = request.headers.get("x-session-id")
+    if not sid:
+        sid = "default"
+    return sid
+
 class SearchRequest(BaseModel):
     query: str
     limit: int = 20
@@ -43,9 +55,20 @@ class SearchRequest(BaseModel):
 class CompareRequest(BaseModel):
     codes: list[str]
 
+class ContextRequest(BaseModel):
+    context: dict
+
+class DietProfileRequest(BaseModel):
+    product_name: str
+    context: Optional[dict] = None
+
 @app.post("/api/search")
-async def search(req: SearchRequest):
+async def search(req: SearchRequest, request: Request):
     query = req.query.strip()
+
+    sid = get_session_id(request)
+    ctx = session_contexts.setdefault(sid, {"history": [], "filters": {}})
+    ctx["history"].append(query)
 
     clean = query.replace(" ", "")
     if clean.isdigit() and 8 <= len(clean) <= 14:
@@ -63,8 +86,43 @@ async def search(req: SearchRequest):
             result = compare_by_names(query, con)
         return {"type": "compare", **result}
 
-    result = search_products(query, req.limit, con, req.offset, req.country)
+    # Apply session filters if any
+    filters = ctx.get("filters", {})
+    result = search_products(query, req.limit, con, req.offset, req.country, filters=filters)
     return {"type": "search", **result}
+@app.post("/api/session/context")
+async def update_session_context(req: ContextRequest, request: Request):
+    sid = get_session_id(request)
+    ctx = session_contexts.setdefault(sid, {"history": [], "filters": {}})
+    ctx["filters"].update(req.context)
+    return {"status": "ok", "context": ctx}
+
+@app.get("/api/session/context")
+async def get_session_context(request: Request):
+    sid = get_session_id(request)
+    ctx = session_contexts.get(sid, {"history": [], "filters": {}})
+    return ctx
+
+# Diet profile and usage suggestion endpoint
+@app.post("/api/diet_profile")
+async def diet_profile(req: DietProfileRequest):
+    # For demo: hardcoded protein comparison and usage suggestion
+    name = req.product_name.lower()
+    protein_map = {"almond milk": 1, "oat milk": 3}
+    protein = protein_map.get(name, 0)
+    compare = None
+    if "almond" in name or "oat" in name:
+        compare = "Oat milk has more protein than almond milk." if protein_map["oat milk"] > protein_map["almond milk"] else "Almond milk has more protein than oat milk."
+    usage = []
+    if "milk" in name:
+        usage = [
+            "Add to breakfast cereal or oatmeal.",
+            "Blend in smoothies.",
+            "Use as a post-workout drink.",
+            "Pour in coffee or tea.",
+            "Use in baking recipes."
+        ]
+    return {"product": name, "protein_g": protein, "compare": compare, "usage": usage}
 
 
 @app.get("/api/product/{code}")
