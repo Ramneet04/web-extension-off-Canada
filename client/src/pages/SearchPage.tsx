@@ -100,6 +100,7 @@ function parseTags(tags: string | null): string[] {
 }
 
 
+function SearchPage() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -159,45 +160,64 @@ function parseTags(tags: string | null): string[] {
   // Example: add vegan filter button
   // <button onClick={() => updateSessionContext({ vegan: true })}>Only Vegan</button>
 
-  return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 24px', fontFamily: 'DM Sans, sans-serif' }}>
 
-      <div style={{ marginBottom: 32, display: 'flex', alignItems: 'center', gap: 16 }}>
-        <img
-          src="https://static.openfoodfacts.org/images/logos/off-logo-horizontal-light.svg"
-          alt="Open Food Facts"
-          style={{ height: 40 }}
-          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-        />
-        <div>
-          <h1 style={{
-            fontFamily: 'Fraunces, serif',
-            fontSize: 22, fontWeight: 700,
-            color: '#1a1814', margin: 0
-          }}>
-            Food Search
-          </h1>
-          <p style={{ color: '#8a8478', fontSize: 13, margin: 0 }}>
-            Smart Search · English & French · Nutri-Score · NOVA
-          </p>
+  // Helper: get history from results or sessionContext
+  const history = (results && (results as any).history) || sessionContext.history || [];
+  const usageSuggestions = results && (results as any).usage_suggestions;
+
+  return (
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px', fontFamily: 'DM Sans, sans-serif', display: 'flex', gap: 32 }}>
+      {/* Sidebar: Previous Queries */}
+      <div style={{ minWidth: 200, maxWidth: 260 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, color: '#2d6a4f', letterSpacing: 0.5 }}>Previous Queries</div>
+        <div style={{ background: '#f7f5f0', borderRadius: 12, padding: 12, minHeight: 80, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
+          {history.length === 0 ? (
+            <span style={{ color: '#aaa', fontSize: 13 }}>No previous queries</span>
+          ) : (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {history.slice(-8).reverse().map((h: string, i: number) => (
+                <li key={i} style={{ marginBottom: 6 }}>
+                  <button
+                    onClick={() => { setQuery(h); doSearch(h) }}
+                    style={{
+                      background: 'white', border: '1px solid #e8e4dc', borderRadius: 8,
+                      padding: '4px 10px', fontSize: 12, color: '#2d6a4f', cursor: 'pointer', width: '100%', textAlign: 'left',
+                      fontFamily: 'DM Sans, sans-serif', boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                    }}
+                  >
+                    {h}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ marginBottom: 10 }}>
-          <button
-            onClick={() => updateSessionContext({ vegan: true })}
-            style={{
-              background: sessionContext?.filters?.vegan ? '#2d6a4f' : 'white',
-              color: sessionContext?.filters?.vegan ? 'white' : '#2d6a4f',
-              border: '1.5px solid #2d6a4f', borderRadius: 10,
-              padding: '6px 16px', fontSize: 13, fontWeight: 600,
-              marginRight: 8, cursor: 'pointer'
-            }}
-          >
-            Only Vegan
-          </button>
+      {/* Main Content */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ marginBottom: 32, display: 'flex', alignItems: 'center', gap: 16 }}>
+          <img
+            src="https://static.openfoodfacts.org/images/logos/off-logo-horizontal-light.svg"
+            alt="Open Food Facts"
+            style={{ height: 40 }}
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+          />
+          <div>
+            <h1 style={{
+              fontFamily: 'Fraunces, serif',
+              fontSize: 22, fontWeight: 700,
+              color: '#1a1814', margin: 0
+            }}>
+              Food Search
+            </h1>
+            <p style={{ color: '#8a8478', fontSize: 13, margin: 0 }}>
+              Smart Search · English & French · Nutri-Score · NOVA
+            </p>
+          </div>
         </div>
+
+      <div style={{ marginBottom: 20 }}>
         <div style={{
           display: 'flex', gap: 10,
           background: 'white',
@@ -309,6 +329,24 @@ function parseTags(tags: string | null): string[] {
             )}
             <strong>{results.total} found</strong>
           </div>
+        </div>
+      )}
+
+      {/* Usage Suggestions Card */}
+      {usageSuggestions && Array.isArray(usageSuggestions) && usageSuggestions.length > 0 && (
+        <div style={{
+          background: '#f7f5f0', border: '1.5px solid #b7dfc8', borderRadius: 14,
+          padding: '18px 24px', marginBottom: 28, boxShadow: '0 2px 12px rgba(45,106,79,0.07)',
+          maxWidth: 520, fontSize: 15, color: '#1a1814', fontFamily: 'DM Sans, sans-serif'
+        }}>
+          <div style={{ fontWeight: 700, color: '#2d6a4f', fontSize: 16, marginBottom: 8, letterSpacing: 0.2 }}>
+            Daily Ideas & Usage Suggestions
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {usageSuggestions.map((s: string, i: number) => (
+              <li key={i} style={{ marginBottom: 6 }}>{s}</li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -532,6 +570,9 @@ function parseTags(tags: string | null): string[] {
           <div>No products found. Try a different search query.</div>
         </div>
       )}
+      </div>
     </div>
-  )
+  );
 }
+
+export default SearchPage
