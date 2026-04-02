@@ -11,7 +11,6 @@ print("=" * 60)
 print("INSPECTING PARQUET FILE: data/0000.parquet")
 print("=" * 60)
 
-# Check total rows
 try:
     total = con.execute("""
         SELECT COUNT(*) FROM read_parquet('data/0000.parquet')
@@ -21,7 +20,6 @@ except Exception as e:
     print(f"Error reading file: {e}")
     exit(1)
 
-# Get all columns and their types
 result = con.execute("""
     DESCRIBE SELECT * FROM read_parquet('data/0000.parquet')
 """).fetchdf()
@@ -31,12 +29,10 @@ print("\nAll columns + types:")
 for _, row in result.iterrows():
     print(f"  {row['column_name']:<45} {row['column_type']}")
 
-# One raw row to inspect list/struct shapes
 raw = con.execute("""
     SELECT * FROM read_parquet('data/0000.parquet') LIMIT 1
 """).fetchdf()
 
-# Check which of our target columns exist
 target_columns = [
     "code", "product_name", "brands", "generic_name", "lang",
     "nutriscore_grade", "nutriscore_score",
@@ -68,7 +64,6 @@ for col in target_columns:
 print(f"\nAvailable: {len(available)}/{len(target_columns)}")
 print(f"Missing:   {len(missing)}/{len(target_columns)}")
 
-# Sample countries_tags to understand format
 if "countries_tags" in raw.columns:
     print("\n--- SAMPLE countries_tags (10 rows) ---")
     s = con.execute("""
@@ -78,7 +73,6 @@ if "countries_tags" in raw.columns:
     for v in s["countries_tags"]:
         print(" ", v)
 
-# Sample nutriments to understand format (JSON string? struct?)
 if "nutriments" in raw.columns:
     print("\n--- SAMPLE nutriments (3 rows) ---")
     s = con.execute("""
@@ -88,7 +82,6 @@ if "nutriments" in raw.columns:
     for v in s["nutriments"]:
         print(" ", str(v)[:300])
 
-# Sample product_name to see if it's a list or string
 if "product_name" in raw.columns:
     print("\n--- SAMPLE product_name (5 rows) ---")
     s = con.execute("""
@@ -98,7 +91,6 @@ if "product_name" in raw.columns:
     for v in s["product_name"]:
         print(" ", v)
 
-# Sample ingredients_text
 if "ingredients_text" in raw.columns:
     print("\n--- SAMPLE ingredients_text (3 rows) ---")
     s = con.execute("""
@@ -108,7 +100,6 @@ if "ingredients_text" in raw.columns:
     for v in s["ingredients_text"]:
         print(" ", str(v)[:200])
 
-# Country distribution - top 30 countries by product count
 print("\n--- COUNTRY DISTRIBUTION (top 30) ---")
 if "countries_tags" in raw.columns:
     try:
@@ -124,7 +115,6 @@ if "countries_tags" in raw.columns:
         """).fetchdf()
         print(s.to_string(index=False))
 
-        # Specifically check our target countries
         print("\n--- OUR TARGET COUNTRIES ---")
         targets = ['en:canada', 'en:france', 'en:india', 'en:united-states', 'en:united-kingdom', 'en:germany']
         for t in targets:
@@ -137,7 +127,6 @@ if "countries_tags" in raw.columns:
             except Exception as e:
                 print(f"  {t:<30} ERROR: {e}")
     except Exception as e:
-        # fallback if UNNEST doesn't work (maybe it's a string not list)
         print(f"  UNNEST failed ({e}), trying string match...")
         for t in ['canada', 'france', 'india', 'united-states', 'united-kingdom']:
             count = con.execute(f"""

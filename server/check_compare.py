@@ -2,7 +2,6 @@ import duckdb, json
 
 con = duckdb.connect('data/off_v2.duckdb', read_only=True)
 
-# Search for Coca Cola
 print("=== Coca Cola ===")
 df = con.execute("""
     SELECT code, product_name, brands, energy_kcal_100g, fat_100g, sugars_100g, proteins_100g, sodium_100g
@@ -13,7 +12,6 @@ df = con.execute("""
 """).fetchdf()
 print(df.to_string())
 
-# Search for Pepsi
 print("\n=== Pepsi ===")
 df2 = con.execute("""
     SELECT code, product_name, brands, energy_kcal_100g, fat_100g, sugars_100g, proteins_100g, sodium_100g
@@ -24,7 +22,6 @@ df2 = con.execute("""
 """).fetchdf()
 print(df2.to_string())
 
-# Search for Coke
 print("\n=== Coke ===")
 df3 = con.execute("""
     SELECT code, product_name, brands, energy_kcal_100g, fat_100g, sugars_100g, proteins_100g, sodium_100g

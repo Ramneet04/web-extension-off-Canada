@@ -26,13 +26,11 @@ print(f"\n{'Country':<20} {'Total':>10} {'Has Image':>12} {'No Image':>10} {'Ima
 print("-" * 65)
 
 for label, tag in targets:
-    # Total products for this country
     total = con.execute(f"""
         SELECT COUNT(*) FROM read_parquet('{PARQUET}')
         WHERE CAST(countries_tags AS VARCHAR) ILIKE '%{label}%'
     """).fetchone()[0]
 
-    # Has at least one image (images array is not empty)
     with_img = con.execute(f"""
         SELECT COUNT(*) FROM read_parquet('{PARQUET}')
         WHERE CAST(countries_tags AS VARCHAR) ILIKE '%{label}%'
@@ -44,7 +42,6 @@ for label, tag in targets:
     pct = (with_img / total * 100) if total > 0 else 0
     print(f"{label:<20} {total:>10,} {with_img:>12,} {no_img:>10,} {pct:>8.1f}%")
 
-# Also check: of those with images, how many have a 'front' image key?
 print("\n--- FRONT IMAGE AVAILABILITY (products with key containing 'front') ---")
 print(f"\n{'Country':<20} {'Has Image':>12} {'Has Front':>12} {'Front %':>9}")
 print("-" * 57)
@@ -65,7 +62,6 @@ for label, tag in targets:
     pct = (with_front / with_img * 100) if with_img > 0 else 0
     print(f"{label:<20} {with_img:>12,} {with_front:>12,} {pct:>8.1f}%")
 
-# Final usable estimate: has front image + has product name + not obsolete
 print("\n--- FULLY USABLE PRODUCTS (name + front image + not obsolete) ---")
 print(f"\n{'Country':<20} {'Usable':>10} {'of Total':>10}")
 print("-" * 44)

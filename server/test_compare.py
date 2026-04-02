@@ -1,6 +1,5 @@
 import requests, json
 
-r = requests.post('http://localhost:8000/api/search', json={'query': 'compare coke and pepsi', 'limit': 5})
 d = r.json()
 
 print(f"Type: {d['type']}, Total: {d['total']}")

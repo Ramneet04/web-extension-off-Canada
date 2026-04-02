@@ -220,7 +220,7 @@ def search_products(
     print(f"Parsing query: {query}")
     parsed = parse_query(query)
 
-    # Merge parsed filters with any session filters passed in
+    
     parsed_filters = parsed.get("filters", {}) or {}
     if filters:
         parsed_filters.update(filters)
@@ -301,16 +301,28 @@ def compare_by_codes(codes: list[str], con: duckdb.DuckDBPyConnection) -> dict:
 
 
 def compare_by_names(query: str, con: duckdb.DuckDBPyConnection) -> dict:
-    # Split on compare keywords to extract individual product names
+    """
+    Extract product names from a compare query and fetch each from Qdrant.
+
+    Handles patterns like:
+      - "compare coke and pepsi"         ← was broken before (only split on vs/versus)
+      - "coke vs pepsi"
+      - "difference between almond milk and oat milk"
+      - "compare coke, pepsi and sprite"
+    """
     cleaned = re.sub(
-        r'\b(compare|vs|versus|comparer|différence entre|difference between)\b',
-        '|', query, flags=re.IGNORECASE
-    )
-    parts = [p.strip() for p in cleaned.split('|') if p.strip()]
+        r'\b(compare|comparer|différence entre|difference between)\b',
+        '', query, flags=re.IGNORECASE
+    ).strip()
+
+    parts = re.split(r'\bvs\.?\b|\bversus\b|\band\b|,', cleaned, flags=re.IGNORECASE)
+    parts = [p.strip() for p in parts if p.strip() and len(p.strip()) > 1]
+
+    print(f"[Compare] Query: '{query}' → Parts: {parts}")
 
     if len(parts) < 2:
         return {
-            "explanation": "Could not extract product names to compare",
+            "explanation": "Could not extract product names. Try 'compare coke and pepsi' or 'coke vs pepsi'.",
             "total":       0,
             "results":     []
         }
@@ -321,13 +333,29 @@ def compare_by_names(query: str, con: duckdb.DuckDBPyConnection) -> dict:
         qdrant_results = qdrant.query_points(
             collection_name="off_products",
             query=vector,
-            limit=1
+            limit=10
         ).points
         if qdrant_results:
-            code = qdrant_results[0].payload["code"]
-            p = get_product_by_code(code, con)
-            if p:
-                products.append(p)
+            codes = [r.payload["code"] for r in qdrant_results]
+            print(f"[Compare] Qdrant codes for '{name}': {codes}")
+            if codes:
+                placeholders = ",".join(["?" for _ in codes])
+                df = con.execute(
+                    f"SELECT {PRODUCT_FIELDS} FROM products WHERE code IN ({placeholders}) AND popularity_key IS NOT NULL AND popularity_key > 0 ORDER BY popularity_key",
+                    codes
+                ).fetchdf()
+                if df.empty:
+                    df = con.execute(
+                        f"SELECT {PRODUCT_FIELDS} FROM products WHERE code IN ({placeholders})",
+                        codes
+                    ).fetchdf()
+                if not df.empty:
+                    def non_null_score(row):
+                        return sum(1 for k, v in row.items() if k != "code" and v is not None and v != '' and (not isinstance(v, float) or not (pd.isna(v) or pd.isnull(v))))
+                    best_row = max(df.to_dict("records"), key=non_null_score)
+                    print(f"[Compare] Raw DB row for '{name}': {best_row}")
+                    p = format_product(best_row)
+                    products.append(p)
 
     return {
         "explanation": f"Comparing: {' vs '.join(parts)}",
